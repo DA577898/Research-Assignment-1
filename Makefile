@@ -1,10 +1,12 @@
-all: main.exe
+CC = g++
 
-main.exe: main.cpp
-	g++ main.cpp -o main.exe
+all: compile run clean
 
-run: main.exe
+compile:
+	$(CC) main.cpp -o main.exe
+
+run:
 	./main.exe
 
 clean:
-	rm -f main.exe
+	rm -f *o main.exe
