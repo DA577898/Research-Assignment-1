@@ -26,7 +26,7 @@ mutex mtx;
  */
 
 void threadFunction(int value, int startingIndex, int endingIndex, vector<bool> &values) {
-    endingIndex = min(endingIndex, (int)values.size());
+    endingIndex = min(max(endingIndex, (int)values.size()), (int)values.size());
     for(int i = startingIndex; i < endingIndex; i+=value) {
         values[i] = false;
     }
@@ -52,14 +52,13 @@ void invokeThreads(int numPrimes, int numThreads, vector<bool> &values) {
             int range = end - start;
             int workload = ceil((double)range / (double)numThreads);
 
-            for(int j = 0; j < numThreads; j++) {
-                int startValue = start + (j * workload);
-                int endValue = startValue + workload;
-                printf("Thread %d: %d - %d\n", j, startValue, endValue);
-                threads.push_back(thread(threadFunction, i, startValue, endValue, ref(values)));
+            int lastStartingValue = start;
+
+            for(int j = 0; j < numThreads; j++) {                
+                int endValue = ((lastStartingValue + workload) / i )* i;
+                threads.push_back(thread(threadFunction, i, lastStartingValue, endValue, ref(values)));
+                lastStartingValue = endValue;
             }
-
-
 
             for(auto &thread : threads) {
                 thread.join();
@@ -91,10 +90,6 @@ int main(int argc, char* argv[]) {
     ofstream myFile("file.txt");
     
     vector<int> primes = findPrimeValues(numPrimes, numThreads);
-    for(auto &prime : primes) {
-        myFile << prime << ", ";
-    }
-    myFile << endl;
     myFile << "Count: " << primes.size() << endl;
     myFile << "Time: " << chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - begin).count() << " ms" << endl;
     myFile.close();
