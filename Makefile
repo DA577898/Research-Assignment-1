@@ -1,6 +1,6 @@
 CC = g++
 
-all: compile run clean
+all: compile run
 
 compile:
 	$(CC) main.cpp -o main.exe
