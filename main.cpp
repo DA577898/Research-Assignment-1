@@ -29,7 +29,7 @@ using namespace std;
 void threadFunction(int value, int startingIndex, int endingIndex, vector<bool> &values) {
     endingIndex = min(max(endingIndex, (int)values.size()), (int)values.size());
     if(startingIndex % 2 == 0){
-        startingIndex += value; // Make sure it starts with an odd number
+        startingIndex -= value; // Make sure it starts with an odd number
     }
     for(int i = startingIndex; i < endingIndex; i+=value*2) { // * 2 so it iterates through odd numbers only
         values[i] = false;
