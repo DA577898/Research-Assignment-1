@@ -44,7 +44,10 @@
         "stdexcept": "cpp",
         "streambuf": "cpp",
         "thread": "cpp",
-        "typeinfo": "cpp"
+        "typeinfo": "cpp",
+        "functional": "cpp",
+        "iterator": "cpp",
+        "future": "cpp"
     },
     "makefile.launchConfigurations": [
         {
@@ -52,5 +55,6 @@
             "binaryPath": "c:\\Users\\Daniel\\Documents\\University of Central Florida\\Research\\Assignment 1\\main.exe",
             "binaryArgs": []
         }
-    ]
+    ],
+    "C_Cpp.default.compilerPath": "C:\\Program Files\\mingw-w64\\bin\\g++.exe"
 }

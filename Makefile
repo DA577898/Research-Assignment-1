@@ -3,7 +3,7 @@ CC = g++
 all: compile run
 
 compile:
-	$(CC) main.cpp -o main.exe
+	$(CC) -std=c++17 .\main.cpp -o .\main.exe
 
 run:
 	./main.exe
