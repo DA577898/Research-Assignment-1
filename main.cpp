@@ -47,7 +47,7 @@ void threadFunction(int value, int startingIndex, int endingIndex, vector<bool> 
  */
 
 
-chrono::steady_clock::time_point invokeThreads(int numPrimes, int numThreads, vector<bool> &values) {
+void invokeThreads(int numPrimes, int numThreads, vector<bool> &values) {
     BS::thread_pool pool(numThreads);
     int runs = ceil(sqrt(numPrimes));
 
@@ -63,7 +63,7 @@ chrono::steady_clock::time_point invokeThreads(int numPrimes, int numThreads, ve
             for(int j = 0; j < numThreads; j++) {
                 // Split workload:        
                 int endValue = ((lastStartingValue + workload) / i )* i;
-                pool.submit_task([=, &values] {  // void to avoid return error
+                pool.detach_task([=, &values] {  // void to avoid return error
                     threadFunction(i, lastStartingValue, endValue, ref(values));
                 });
                 lastStartingValue = endValue;
