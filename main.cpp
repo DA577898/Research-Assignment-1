@@ -73,6 +73,32 @@ void invokeThreads(int numPrimes, int numThreads, vector<bool> &values) {
     pool.wait();
 }
 
+void individualWheelFactorize(vector<bool> &values, int value, int numPrimes) {
+    for(int i = value * value; i < numPrimes; i+=value/2) {
+        values[i] = false;
+    }
+}
+
+/**
+ * This function is called to factorize the wheel. It is used to avoid the multiples of 2, 3, and 5, runs mod 30.
+ * 
+ * @param values the array of values to be sieved
+ * @param numPrimes the upper bound of primes to be found
+ * @param numThreads the number of threads to be used
+ */
+
+void wheelFactorize(vector<bool> &values, int numPrimes, int numThreads){
+    BS::thread_pool pool(numThreads);  // Pool of threads, prevents constant creation and destruction
+    vector<int> wheel = {1, 7, 11, 13, 17, 19, 23, 29}; // Wheel factorization up to 29
+
+    for(int i = 0; i < numThreads; i++) {
+        pool.detach_task([=, &values] {  // void to avoid return error
+            individualWheelFactorize(values, wheel[i], numPrimes);
+        });
+    }
+    pool.wait();
+}
+
 /**
  * This function is called to find the prime numbers up to a given number. It starts the thread function and stores
  * runtime and the sum of the prime numbers.
@@ -83,29 +109,31 @@ void invokeThreads(int numPrimes, int numThreads, vector<bool> &values) {
  */
 
 tuple<vector<int>, long long, long long> findPrimeValues(int numPrimes, int numThreads) {
-    vector<bool> values(numPrimes, true);
+    vector<bool> values(numPrimes/2, true);
+    //wheelFactorize(values, numPrimes, numThreads);
     vector<int> primes;
-    values[0] = false; values[1] = false;  // Initialize 0 and 1 as non primes.
 
     chrono::steady_clock::time_point begin = chrono::steady_clock::now(); // Starting time
     invokeThreads(numPrimes, numThreads, values);
     long long time = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - begin).count(); // Ending time
     long long sum = 0;
 
+    
     // Add the prime numbers to the vector.
     primes.push_back(2); // Add 2, the only even prime number, since function only goes through odd numbers.
-    for(int i = 1; i < numPrimes; i+=2) { // Goes through odd numbers (evens are not prime)
+    for(int i = 1; i < numPrimes / 2; i++) { // Goes through odd numbers (evens are not prime)
         if(values.at(i)) {
-            primes.push_back(i);
+            primes.push_back(i*2+1);
             sum += i;
         }
     }
+    
 
     return {primes, time, sum};
 }
 
 int main(int argc, char* argv[]) {
-    int numPrimes = 100000000;
+    int numPrimes = 1000;
     int numThreads = 8;
     
     ofstream myFile("file.txt");
