@@ -31,9 +31,12 @@ void sieveVector(vector<bool> &primes){
     int limit = sqrt(MAX_PRIME) / 2;  // Avoid recalculating every run
     for(int i = 0; i < limit; i++){
         if(primes[i]){
-            sieveValue(primes, i);
+            THREAD_POOL.detach_task([=, &primes] {
+                sieveValue(primes, i);
+            });
         }
     }
+    THREAD_POOL.wait();
 }
 
 void individualWheelValue(vector<bool> &primes, int value){
@@ -60,20 +63,21 @@ void wheelFactorization(vector<bool> &primes){
         THREAD_POOL.detach_task([=, &primes] {
             individualWheelValue(ref(primes), wheel[i]);
         });
-        THREAD_POOL.wait();
     }
+    THREAD_POOL.wait();
 }
 
 int main(int argc, char** argv){
+    chrono::steady_clock::time_point begin = chrono::steady_clock::now(); // Starting time
+
     vector<bool> primes((MAX_PRIME/2 - 1), false);  // (3, end] inclusive.
     wheelFactorization(primes);
     sieveVector(primes);
 
+    long long time = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - begin).count(); // Ending time
+    cout << "runtime: " << time << " ms" << endl;
+
     ofstream file("file.txt");
-    for(int i = 0; i < primes.size(); i++){
-        if(primes[i]){
-            file << (i*2)+3 << ", ";
-        }
-    }
+
     file << endl << "Total primes: " << count(primes.begin(), primes.end(), true) + 1;  // Add 2 to the count.
 }
