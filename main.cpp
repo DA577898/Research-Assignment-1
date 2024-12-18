@@ -34,9 +34,9 @@ void sieveVector(vector<bool> &primes){
             THREAD_POOL.detach_task([=, &primes] {
                 sieveValue(primes, i);
             });
+            THREAD_POOL.wait();        
         }
     }
-    THREAD_POOL.wait();
 }
 
 void individualWheelValue(vector<bool> &primes, int value){
@@ -63,8 +63,8 @@ void wheelFactorization(vector<bool> &primes){
         THREAD_POOL.detach_task([=, &primes] {
             individualWheelValue(ref(primes), wheel[i]);
         });
+        THREAD_POOL.wait();
     }
-    THREAD_POOL.wait();
 }
 
 int main(int argc, char** argv){
