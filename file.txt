@@ -1,4 +1,0 @@
-Count: 345
-Time: 0 ms
-Sum of primes: 83785
-Top 10 maximum primes: 973 975 977 981 983 985 989 993 997 999 

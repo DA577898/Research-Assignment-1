@@ -8,6 +8,9 @@
 
 using namespace std;
 
+const int MAX_THREADS = 8;
+const int MAX_PRIME = 100;
+
 /**
  * This program calculates the prime numbers up to a given number using the Sieve of Eratosthenes algorithm.
  * 
@@ -15,136 +18,31 @@ using namespace std;
  * https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes
  */
 
-
-/**
- * This function is called by each thread to calculate the prime numbers from a given number to a given number. The
- * workload is split equally by the function invokeThreads.
- * 
- * @param value the number currently being sieved
- * @param startingIndex the starting index of the subarray
- * @param endingIndex the ending index of the subarray
- * @param values the array of values to be sieved
- */
-
-void threadFunction(int value, int startingIndex, int endingIndex, vector<bool> &values) {
-    endingIndex = min(max(endingIndex, (int)values.size()), (int)values.size());
-    if(startingIndex % 2 == 0){
-        startingIndex -= value; // Make sure it starts with an odd number
-    }
-    for(int i = startingIndex; i <= endingIndex; i+=value*2) { // * 2 so it iterates through odd numbers only
-        values[i] = false;
+void sieveValue(vector<bool> &primes, int i){
+    int value = (i*2)+3;
+    for(int j = value * value; j < MAX_PRIME; j += (value * 2)){ // Skip even numbers
+        cout << j << ", Index to be removed " << (j-3)/2 << endl;
+        primes[(j-3)/2] = false;
     }
 }
 
-/**
- * This function is called to invoke the threads to calculate the prime numbers.
- * It works by splitting up the workload equally among the threads, performing the sieve
- * on different chunks of the array simultaneously.
- * 
- * @param numPrimes the upper bound of primes to be found
- * @param numThreads the number of threads to be used
- * @param values the array of values to be sieved
- */
-
-
-void invokeThreads(int numPrimes, int numThreads, vector<bool> &values) {
-    BS::thread_pool pool(numThreads);
-    int runs = ceil(sqrt(numPrimes));
-
-    for(int i = 3; i < runs; i+=2) {  // Go only through odd numbers (evens are all non-prime and code below accounts for it)
-        if(values[i]) {
-            int start = i * i;
-            int end = numPrimes;
-            int range = end - start;
-            int workload = range / numThreads;
-
-            int lastStartingValue = start;
-
-            for(int j = 0; j < numThreads; j++) {
-                // Split workload:        
-                int endValue = ((lastStartingValue + workload) / i )* i;
-                pool.detach_task([=, &values] {  // void to avoid return error
-                    threadFunction(i, lastStartingValue, endValue, ref(values));
-                });
-                lastStartingValue = endValue;
-            }
+void sieveVector(vector<bool> &primes){
+    int limit = sqrt(MAX_PRIME) / 2;  // Avoid recalculating every run
+    for(int i = 0; i < limit; i++){
+        if(primes[i]){
+            sieveValue(primes, i);
         }
     }
-    pool.wait();
 }
 
-void individualWheelFactorize(vector<bool> &values, int value, int numPrimes) {
-    for(int i = value * value; i < numPrimes; i+=value/2) {
-        values[i] = false;
-    }
-}
 
-/**
- * This function is called to factorize the wheel. It is used to avoid the multiples of 2, 3, and 5, runs mod 30.
- * 
- * @param values the array of values to be sieved
- * @param numPrimes the upper bound of primes to be found
- * @param numThreads the number of threads to be used
- */
+int main(int argc, char** argv){
+    vector<bool> primes((MAX_PRIME/2 - 1), true);  // (3, end] inclusive.
+    sieveVector(primes);
 
-void wheelFactorize(vector<bool> &values, int numPrimes, int numThreads){
-    BS::thread_pool pool(numThreads);  // Pool of threads, prevents constant creation and destruction
-    vector<int> wheel = {1, 7, 11, 13, 17, 19, 23, 29}; // Wheel factorization up to 29
-
-    for(int i = 0; i < numThreads; i++) {
-        pool.detach_task([=, &values] {  // void to avoid return error
-            individualWheelFactorize(values, wheel[i], numPrimes);
-        });
-    }
-    pool.wait();
-}
-
-/**
- * This function is called to find the prime numbers up to a given number. It starts the thread function and stores
- * runtime and the sum of the prime numbers.
- * 
- * @param numPrimes upper bound of primes to be calculated
- * @param numThreads number of threads to be used
- * @return tuple<vector<int>, long long> The vector of prime numbers, the sum of the prime numbers, and the time it took to run threads.
- */
-
-tuple<vector<int>, long long, long long> findPrimeValues(int numPrimes, int numThreads) {
-    vector<bool> values(numPrimes/2, true);
-    //wheelFactorize(values, numPrimes, numThreads);
-    vector<int> primes;
-
-    chrono::steady_clock::time_point begin = chrono::steady_clock::now(); // Starting time
-    invokeThreads(numPrimes, numThreads, values);
-    long long time = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - begin).count(); // Ending time
-    long long sum = 0;
-
-    
-    // Add the prime numbers to the vector.
-    primes.push_back(2); // Add 2, the only even prime number, since function only goes through odd numbers.
-    for(int i = 1; i < numPrimes / 2; i++) { // Goes through odd numbers (evens are not prime)
-        if(values.at(i)) {
-            primes.push_back(i*2+1);
-            sum += i;
+    for(int i = 0; i < primes.size(); i++){
+        if(primes[i]){
+            cout << i*2+3 << " ";
         }
     }
-    
-
-    return {primes, time, sum};
-}
-
-int main(int argc, char* argv[]) {
-    int numPrimes = 1000;
-    int numThreads = 8;
-    
-    ofstream myFile("file.txt");
-    auto primes = findPrimeValues(numPrimes, numThreads); // tuple<prime vector, runtime, sum>
-    myFile << "Count: " << get<0>(primes).size() << endl;
-    myFile << "Time: " << get<1>(primes) << " ms" << endl;
-    myFile << "Sum of primes: " << get<2>(primes) << endl;
-    myFile << "Top 10 maximum primes: ";
-    for(int i = get<0>(primes).size() - 10; i < get<0>(primes).size(); i++) {
-        myFile << get<0>(primes)[i] << " ";
-    }
-    myFile.close();
-    return 0;
 }
