@@ -1,2 +1,2 @@
 
-Total primes: 5761455
+Total primes: 26665229
