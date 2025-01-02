@@ -85,35 +85,23 @@ void individualWheelValue(vector<bool> &primes, int value){
     }
 }
 
-void wheelFactorization(vector<bool> &primes){
-    // First, set primes from 0 to thirty to true.
-    vector<int> primesToThirty = {3, 5, 7, 11, 13, 17, 19, 23, 29};  // Set first primes excluding 2 since it will be added at the final calculation. 
-    for(auto i : primesToThirty){
-        primes[(i-3)/2] = true;
-    }
-
-    // Then using the wheel create a list of potential primes (up to sqrt of max prime since it will be iterated until that number).
-    // The numbers are obtained by removing all multiples of 2, 3, 5, leaving us with 8 numbers ( = to thread count).
-    // Since 2*3*5 = 30, the values will repeat every 30 numbers to form the pattern. (mod 30)
-    vector<int> wheel = {1, 7, 11, 13, 17, 19, 23, 29};  // Size of wheel is 8, since we have 8 threads.
-
-    int chunks = sqrt(MAX_PRIME) / 30;  // Number of chunks to divide the wheel into.
-
-    for(int i = 0; i < MAX_THREADS; i++){
-        THREAD_POOL.detach_task([=, &primes] {
-            // Running the calculation twice avoids cache errors, the code will be optimized further but this is faster than constantly using wait.
-            individualWheelValue(ref(primes), wheel[i]);
-            individualWheelValue(ref(primes), wheel[i]);
-        });
+void wheelFactorization(){
+    vector<vector<bool>> wheels;
+    vector<int> offsets = {4, 2, 4, 2, 4, 6, 2, 6};
+    int cur = 1;
+    int i = 7;
+    while(cur < 100){
+        cur += offsets[i%8];
+        cout << cur << ", ";
+        i++;
     }
 }
 
 void run(vector<long long> &runTimes){
     chrono::steady_clock::time_point begin = chrono::steady_clock::now(); // Starting time
 
-    vector<bool> primes((MAX_PRIME/2 - 1), false);  // [3, end] inclusive.
-    wheelFactorization(primes);
-    sieveVector(primes);
+    wheelFactorization();/*
+    sieveVector(wheel);
 
     long long time = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - begin).count(); // Ending time
     cout << "runtime: " << time << " ms" << endl;
@@ -128,7 +116,7 @@ void run(vector<long long> &runTimes){
 
         }
     }
-    file << endl << "Total primes: " << count << endl;
+    file << endl << "Total primes: " << count << endl;*/
     
 }
 
