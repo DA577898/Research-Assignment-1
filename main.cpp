@@ -132,16 +132,21 @@ void sieveVector(vector<vector<bool>> &wheel){
 vector<bool> individualWheelValue(int startValue, int endValue, int chunkNumber){
     vector<int> offsets = {4, 2, 4,  2,  4,  6,  2,  6};
     unordered_map<int, int> wheelLookup = {{1, 0}, {7, 1}, {11, 2}, {13, 3}, {17, 4}, {19, 5}, {23, 6}, {29, 7}}; // to get the index of the offset
-    vector<bool> wheel((endValue - startValue)/2 + 10, false);
+    vector<bool> wheel((endValue - startValue)/2 + 1, false);
 
     int value = startValue;
     while (wheelLookup.count(value % 30) == 0) { value++; }  // find next value that will be part of the wheel
     int index = wheelLookup[value % 30] + 7;
+
+    ofstream fileOne;
+    fileOne.open("fileOne.txt", ios::app);
     while(value < endValue){  // calculate the wheel values
-        wheel[((value % (MAX_PRIME / MAX_THREADS)) - 3) / 2] = true;
+        wheel[(value - startValue) / 2] = true;
+        fileOne << "Thread " << chunkNumber << " value: " << value << " index: " << (value - startValue) / 2 << endl;
         value += offsets[index % 8];
         index++;
     }
+    fileOne.close();
     return wheel;
 }
 
@@ -150,28 +155,36 @@ void wheelFactorization(vector<vector<bool>> &wheel){
     futures.reserve(MAX_THREADS);
     wheel.reserve(MAX_THREADS);
 
-    for(int i = 0; i < 8; i++){
-        int start = (i == 0) ? 7 : i * (MAX_PRIME / MAX_THREADS);
+    remove("fileOne.txt");
+
+    for(int i = 0; i < MAX_THREADS; i++){
+        int start = i * (MAX_PRIME / MAX_THREADS);
         int end = min((i + 1) * (MAX_PRIME / MAX_THREADS), MAX_PRIME);
         futures.push_back(THREAD_POOL.submit_task([=] () {
             return individualWheelValue(start, end, i);
         }));
+        THREAD_POOL.wait();
+
     }
     THREAD_POOL.wait();
 
     for(auto &future : futures){
         wheel.push_back(future.get());
     }
-    wheel[0][0] = true;  // 3 is prime.
-    wheel[0][1] = true;  // 5 is prime;
+    //wheel[0][1] = true;  // 3 is prime.
+    //wheel[0][2] = true;  // 5 is prime;
+    int count = 1;  // 2 is prime.
+    ofstream fileTwo("fileTwo.txt");
     for (int i = 0; i < wheel.size(); i++) {
         for (int j = 0; j < wheel[i].size(); j++) {
             if (wheel[i][j]) {
-                cout << 2 * (i * (MAX_PRIME / MAX_THREADS) + j) + 3 << " ";
+                fileTwo << "Thread " << i << " value: " << ((i * (MAX_PRIME / MAX_THREADS)) + (2 * j)) + 1 << " index: " << j << endl;
+                count++;
             }
         }
     }
-    cout << endl;
+    fileTwo.close();
+    cout << endl << count << endl;
 }
 
 void run(vector<long long> &runTimes){
