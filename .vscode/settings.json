@@ -47,7 +47,8 @@
         "typeinfo": "cpp",
         "functional": "cpp",
         "iterator": "cpp",
-        "future": "cpp"
+        "future": "cpp",
+        "span": "cpp"
     },
     "makefile.launchConfigurations": [
         {

@@ -79,22 +79,28 @@ void sieveVector(vector<bool> &primes){
     }
 }*/
 
-void individualWheelValue(vector<bool> &primes, int value){
-    for(int j = value + 30; j < MAX_PRIME; j += 30){ // Every 30 mark the next possible prime following the wheel pattern since it's a mod 30 wheel.
-        primes[(j-3)/2] = true;
+void individualWheelValue(int startValue, int endValue){
+    vector<int> offsets = {4, 2, 4,  2,  4,  6,  2,  6};
+    unordered_map<int, int> wheelLookup = {{1, 0}, {7, 1}, {11, 2}, {13, 3}, {17, 4}, {19, 5}, {23, 6}, {29, 7}}; // to get the index of the offset
+    vector<int> wheel;
+
+    int value = startValue;
+    while (wheelLookup.count(value % 30) == 0) { value++; }
+    int index = wheelLookup[value % 30] + 7;
+    while(value < endValue){
+        cout << value % 30 << ", ";
+        wheel.push_back(value);
+        value += offsets[index % 8];
+        index++;
     }
 }
 
 void wheelFactorization(){
-    vector<vector<bool>> wheels;
-    vector<int> offsets = {4, 2, 4, 2, 4, 6, 2, 6};
-    int cur = 1;
-    int i = 7;
-    while(cur < 100){
-        cur += offsets[i%8];
-        cout << cur << ", ";
-        i++;
-    }
+
+    individualWheelValue(0, 1000);
+    individualWheelValue(1000, 2000);
+
+
 }
 
 void run(vector<long long> &runTimes){
