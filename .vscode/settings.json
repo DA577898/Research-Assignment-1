@@ -48,7 +48,21 @@
         "functional": "cpp",
         "iterator": "cpp",
         "future": "cpp",
-        "span": "cpp"
+        "span": "cpp",
+        "bit": "cpp",
+        "charconv": "cpp",
+        "compare": "cpp",
+        "concepts": "cpp",
+        "numeric": "cpp",
+        "random": "cpp",
+        "format": "cpp",
+        "iomanip": "cpp",
+        "numbers": "cpp",
+        "semaphore": "cpp",
+        "stop_token": "cpp",
+        "text_encoding": "cpp",
+        "variant": "cpp",
+        "list": "cpp"
     },
     "makefile.launchConfigurations": [
         {
