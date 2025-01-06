@@ -21,12 +21,13 @@ BS::thread_pool THREAD_POOL(MAX_THREADS);
  * https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes
  */
 
-void sieveValue(vector<bool> &primes, int i, int threadNum){
-    vector<int> offsets = {4, 2, 4,  2,  4,  6,  2,  6};
-    
-    //unordered_map<int, int> wheelLookup = {{1, 0}, {7, 1}, {11, 2}, {13, 3}, {17, 4}, {19, 5}, {23, 6}, {29, 7}}; // to get the index of the offset
-    //while (wheelLookup.count(value % 30) == 0) { value++; }  // find next value that will be part of the wheel
 
+void sieveValue(vector<bool> &primes, int i, int threadNum){
+
+    // This function will iterate through the wheeled values only using the difference between the numbers to traverse through.
+    // This avoids checking multiples of 2, 3, and 5 altogether.
+
+    vector<int> offsets = {4, 2, 4,  2,  4,  6,  2,  6};
     int count = 0;
     int wheelValue = 7;
     int value = (i*2)+1;
@@ -39,43 +40,80 @@ void sieveValue(vector<bool> &primes, int i, int threadNum){
     }
 }
 
-void initialSieve(vector<bool> &primes){
+vector<int> initialSieve(vector<bool> &primes){
 
     // Sieve up to the square root of the max prime to find the primes, then use those primes to sieve the rest of the numbers.
     // This function will iterate through the wheeled values only using the difference between the numbers to traverse through.
     // This avoids checking multiples of 2, 3, and 5 altogether.
 
+    // It adds prime numbers to the int vector, then removes all multiples of that prime number from the bool vector.
+
     vector<int> offsets = {4, 2, 4,  2,  4,  6,  2,  6};
+    vector<int> intPrimeVector = {2, 3, 5};
     int index = -1;
-    int limit = 100;
+    int limit = sqrt(MAX_PRIME);
     for(int i = 7; i < limit; i+=offsets[index % 8]){
         if(primes[i/2]){
+            intPrimeVector.push_back(i);
             sieveValue(primes, i/2, 0);
         }
        index++;
     }
+    return intPrimeVector;
+}
+
+void chunkSieve(vector<bool> &wheel, vector<int> &primes, int threadID){
+
+    // This function will iterate through the wheeled values only using the difference between the numbers to traverse through.
+    // It accounts for split up chunks of the wheel, so each thread will only calculate a portion of the wheel.
+
+    vector<int> offsets = {4, 2, 4, 2, 4, 6, 2, 6};
+    unordered_map<int, int> wheelLookup = {{1, 0}, {7, 1}, {11, 2}, {13, 3}, {17, 4}, {19, 5}, {23, 6}, {29, 7}}; // to get the index of the offset
+    int end = min((threadID + 1) * (MAX_PRIME / MAX_THREADS), MAX_PRIME);
+    
+    for(auto it = primes.begin() + 3; it != primes.end(); ++it){  // Skip checking 2, 3, and 5
+        int prime = *it;
+        int start = ((((threadID) * (MAX_PRIME / MAX_THREADS) + (prime - 1))/prime)*prime);  // get first divisible by prime number
+        if (start % 2 == 0) { start += prime; }  // make sure it is odd
+        if (threadID == 0) { start = prime * prime; }  // start at prime squared if thread 0
+
+        while (wheelLookup.find(start % 30) == wheelLookup.end()){
+            start += prime * 2;
+        }
+        if(start > end){ break; }  // skip if start is greater than end
+        
+        int wheelValue = start / prime;
+        int index = wheelLookup[wheelValue % 30] + 7;
+
+        while (wheelValue * prime < end){
+            wheel[(wheelValue * prime - (threadID * (MAX_PRIME / MAX_THREADS))) / 2] = false;
+            wheelValue += offsets[index % 8];
+            index++;
+        }
+    }
 }
 
 void sieveVector(vector<vector<bool>> &wheel){
-    // We will sieve up to the square root of MAX_PRIME, so we can get all prime numbers.
-    vector<bool> primes = {wheel[0].begin(), wheel[0].begin() + (sqrt(MAX_PRIME) / 2) - 1};
-    initialSieve(primes);
 
+    // We will sieve up to the square root of MAX_PRIME, so we can get all prime numbers up to that number and use those to sieve
+    // This works since all non-prime numbers have a prime factor less than or equal to the square root of the number.
 
-/*     int count = 1;  // 2 is prime.
-    for (int i = 0; i < wheel.size(); i++) {
-        for (int j = 0; j < wheel[i].size(); j++) {
-            if (wheel[i][j]) {
-                cout << "Thread " << i << " value: " << ((i * (MAX_PRIME / MAX_THREADS)) + (2 * j)) + 1 << " index: " << j << endl;
-                count++;
-            }
-        }
+    vector<bool> wheelSubset = {wheel[0].begin(), wheel[0].begin() + (sqrt(MAX_PRIME) / 2) - 1};
+    vector<int> primes = initialSieve(wheelSubset);
+    
+    for(int i = 0; i < MAX_THREADS; i++){
+        THREAD_POOL.detach_task([=, &wheel, &primes] () {
+            chunkSieve(ref(wheel[i]), ref(primes), i);
+        });
     }
-    cout << endl << count << endl; */
-
+    THREAD_POOL.wait();
 }
 
 vector<bool> individualWheelValue(int startValue, int endValue){
+
+    // This function will calculate the wheel values for a specific chunk of the wheel.
+    // It will only calculate the values that are part of the wheel, skipping multiples of 2, 3, and 5.
+
     vector<int> offsets = {4, 2, 4,  2,  4,  6,  2,  6};
     unordered_map<int, int> wheelLookup = {{1, 0}, {7, 1}, {11, 2}, {13, 3}, {17, 4}, {19, 5}, {23, 6}, {29, 7}}; // to get the index of the offset
     vector<bool> wheel((endValue - startValue)/2 + 1, false);
@@ -85,7 +123,7 @@ vector<bool> individualWheelValue(int startValue, int endValue){
     // Finds next value that will be part of the wheel. Useful if you start, for example, at 1250, which is not part of the wheel.
     // This is needed since the calculations are split between 8 chunks.
 
-    while (wheelLookup.count(value % 30) == 0) { value++; }  
+    while (wheelLookup.find(value % 30) == wheelLookup.end()) { value++; }  
     int index = wheelLookup[value % 30] + 7;
 
     while(value < endValue){  // calculate the wheel values
@@ -125,48 +163,76 @@ void wheelFactorization(vector<vector<bool>> &wheel){
     wheel[0][2] = true;  // 5 is prime.
 }
 
-// For testing purposes, test multiple times and get the average run speed.
+vector<long long> boolToIntVector(vector<bool> &primes, int threadID){
 
-void run(vector<long long> &runTimes){
+    // This function converts the bool vector to an int vector, then adds the sum of the primes to the end of the vector.
+    // It is optimized for multithreading, so each thread will only calculate a portion of the wheel.
+    // It will only calculate the values that are part of the wheel, skipping multiples of 2, 3, and 5.
+
+    vector<long long> intPrimes;
+    vector<int> offsets = {4, 2, 4, 2, 4, 6, 2, 6};
+    unordered_map<int, int> wheelLookup = {{1, 0}, {7, 1}, {11, 2}, {13, 3}, {17, 4}, {19, 5}, {23, 6}, {29, 7}};
+    int firstPrimeInChunk = 0;
+    long long sum = 0;
+
+    if(threadID == 0){
+        intPrimes = {2, 3, 5}; // 2, 3, 5 are prime, but will not be calculated with the wheel so they have to be manually added.
+        sum = 2 + 3 + 5;  // also add the sum of the first 3 primes.
+        firstPrimeInChunk = 7;  // start at 7, since 2, 3, 5 are already added.
+    } else { // find the first prime in this chunk.
+        while(!primes[firstPrimeInChunk]){ firstPrimeInChunk++; }  // find the index of first prime in the chunk
+        firstPrimeInChunk = ((firstPrimeInChunk * 2) + 1) + (threadID * (MAX_PRIME / MAX_THREADS));  // now, convert to value
+    }
+    
+    int index = wheelLookup[firstPrimeInChunk % 30] + 7;
+    int end = min((threadID + 1) * (MAX_PRIME / MAX_THREADS), MAX_PRIME);
+
+    while (firstPrimeInChunk < end){
+        if(primes[(firstPrimeInChunk - (threadID * (MAX_PRIME / MAX_THREADS))) / 2]){
+            sum += firstPrimeInChunk;
+            intPrimes.push_back(firstPrimeInChunk);
+        }
+        firstPrimeInChunk += offsets[index % 8];
+        index++;
+    }
+    intPrimes.push_back(sum);
+    return intPrimes;
+}
+
+int main(int argc, char** argv){
     vector<vector<bool>> wheel;
     auto begin = chrono::steady_clock::now(); // Starting time
-
     wheelFactorization(wheel);
     sieveVector(wheel);
-
+    vector<future<vector<long long>>> primes;
+    vector<vector<long long>> primeVector;
+    primes.reserve(MAX_THREADS);
+    primeVector.reserve(MAX_THREADS);
+    for(int i = 0; i < MAX_THREADS; i++){
+        primes.push_back(THREAD_POOL.submit_task([=, &wheel] () {
+            return boolToIntVector(wheel[i], i);
+        }));
+    }
+    for(auto &prime : primes){
+        primeVector.push_back(prime.get());
+    }
     auto time = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - begin).count(); // Ending time
-    runTimes.push_back(time);    
-}
 
-int main(int argc, char** argv){
-    vector<long long> runTimes;
-    for(int i = 0; i < 10; i++){run(runTimes);}
-    long long total = 0;
-    for (int time : runTimes) {
-        total += time;
+    long long sum = 0;
+    int count = 0;
+    for(int i = 0; i < primeVector.size(); i++){
+        sum += primeVector[i].back();
+        count += primeVector[i].size() - 1;
     }
-    cout << "Average runtime: " << total / runTimes.size() << " ms" << endl;
-}
+    ofstream file("primes.txt");
+    file << "Run time: " << time << " ms" << endl;
+    file << "Total primes: " << count << endl;
+    file << "Sum of primes: " << sum << endl;
+    file << "Top ten maximum primes: " << endl;
 
-/*
-int main(int argc, char** argv){
-    chrono::steady_clock::time_point begin = chrono::steady_clock::now(); // Starting time
-
-    vector<bool> primes((MAX_PRIME/2 - 1), false);  // (3, end] inclusive.
-    wheelFactorization(primes);
-    sieveVector(primes);
-
-    long long time = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - begin).count(); // Ending time
-    cout << "runtime: " << time << " ms" << endl;
-
-    ofstream file("file.txt");
-
-    int count = 1;  // 2 is prime.
-    for(int i = 0; i < primes.size(); i++){
-        if(primes[i]){
-            count++;
-        }
+    for(auto it = primeVector[MAX_THREADS-1].end() - 11; it != primeVector[MAX_THREADS-1].end() - 1; ++it){  // Skip checking 2, 3, and 5
+        file << *it << " ";
     }
-    file << endl << "Total primes: " << count << endl;
+    file.close();
+    return 0;
 }
-*/

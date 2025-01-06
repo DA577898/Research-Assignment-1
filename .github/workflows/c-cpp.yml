@@ -15,8 +15,8 @@ jobs:
     - uses: actions/checkout@v4
     - name: make
       run: make
-    - name: Upload file.txt as artifact
+    - name: Upload primes.txt as artifact
       uses: actions/upload-artifact@v3
       with:
-        name: file.txt
-        path: file.txt
+        name: primes.txt
+        path: primes.txt
